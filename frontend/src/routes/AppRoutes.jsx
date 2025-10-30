@@ -4,6 +4,7 @@ import Login from '../components/login'
 import Register from '../components/Register'
 import ProtectedRoute from '../components/ProtectedRoute'
 import AdminRegisterUser from '../components/AdminRegisterUser'
+import ChangePassword from '../components/ChangePassword'
 
 import RoleRedirect from './RoleRedirect'
 import { getDashboardPath } from './paths'
@@ -69,6 +70,15 @@ export default function AppRoutes() {
 
       {/* Role-based redirect utility */}
       <Route path="/me" element={<RoleRedirect />} />
+
+      <Route
+        path="/change-password"
+        element={
+          <ProtectedRoute>
+            <ChangePassword />
+          </ProtectedRoute>
+        }
+      />
 
       {/* 404 */}
       <Route path="*" element={<Navigate to="/login" replace />} />

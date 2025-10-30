@@ -46,18 +46,16 @@ export async function login(req, res) {
 // For first-time login (HOD/Faculty) and general password updates
 export async function changePassword(req, res) {
   const { oldPassword, newPassword } = req.body
-  if (!newPassword) return res.status(400).json({ error: 'newPassword required' })
+  if (!oldPassword) return res.status(400).json({ error: 'oldPassword required' })
+  if (!newPassword || newPassword.length < 6) {
+    return res.status(400).json({ error: 'newPassword must be at least 6 characters' })
+  }
 
   const user = await User.findById(req.user.sub)
   if (!user) return res.status(404).json({ error: 'user not found' })
 
-  // If mustChangePassword is true, oldPassword can be required or optional.
-  // Here we require oldPassword unless user.mustChangePassword === true and role in ['hod','faculty'].
-  if (!user.mustChangePassword) {
-    if (!oldPassword) return res.status(400).json({ error: 'oldPassword required' })
-    const ok = await bcrypt.compare(oldPassword, user.passwordHash)
-    if (!ok) return res.status(401).json({ error: 'old password incorrect' })
-  }
+  const ok = await bcrypt.compare(oldPassword, user.passwordHash)
+  if (!ok) return res.status(401).json({ error: 'old password incorrect' })
 
   user.passwordHash = await bcrypt.hash(newPassword, 10)
   user.mustChangePassword = false
