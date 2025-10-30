@@ -1,8 +1,12 @@
 import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
+import ProtectedRoute from '../components/ProtectedRoute'
+import StudentDashboard from '../pages/Student/Dashboard'
+import ApplicationForm from '../pages/Student/ApplicationForm'
+import ApplicationStatus from '../pages/Student/ApplicationStatus'
+
 import Login from '../components/login'
 import Register from '../components/Register'
-import ProtectedRoute from '../components/ProtectedRoute'
 import AdminRegisterUser from '../components/AdminRegisterUser'
 import ChangePassword from '../components/ChangePassword'
 
@@ -11,8 +15,8 @@ import { getDashboardPath } from './paths'
 
 import AdminDashboard from '../pages/Admin/Dashboard'
 import HODDashboard from '../pages/HOD/Dashboard'
+import HODApplicationView from '../pages/HOD/ApplicationView'
 import FacultyDashboard from '../pages/Faculty/Dashboard'
-import StudentDashboard from '../pages/Student/Dashboard'
 
 export default function AppRoutes() {
   return (
@@ -52,6 +56,14 @@ export default function AppRoutes() {
         }
       />
       <Route
+        path="/hod/applications/:id"
+        element={
+          <ProtectedRoute roles={['hod']}>
+            <HODApplicationView />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/faculty/dashboard"
         element={
           <ProtectedRoute roles={['faculty']}>
@@ -64,6 +76,22 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute roles={['student']}>
             <StudentDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/student/apply"
+        element={
+          <ProtectedRoute roles={['student']}>
+            <ApplicationForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/student/status"
+        element={
+          <ProtectedRoute roles={['student']}>
+            <ApplicationStatus />
           </ProtectedRoute>
         }
       />

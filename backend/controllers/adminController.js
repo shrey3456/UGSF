@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs'
 import User from '../models/User.js'
+import StudentApplication from '../models/StudentApplication.js'
 
 export async function createUserByAdmin(req, res) {
   const { name, email, password, role, department } = req.body
@@ -27,4 +28,17 @@ export async function createUserByAdmin(req, res) {
   })
 
   return res.status(201).json({ id: user._id, role: user.role, mustChangePassword: user.mustChangePassword })
+}
+
+export async function getApplicationStats(req, res) {
+  const [submitted, accepted, rejected] = await Promise.all([
+    StudentApplication.countDocuments({ status: 'submitted' }),
+    StudentApplication.countDocuments({ status: 'accepted' }),
+    StudentApplication.countDocuments({ status: 'rejected' })
+  ])
+  return res.json({
+    total: submitted + accepted + rejected,
+    accepted,
+    rejected
+  })
 }

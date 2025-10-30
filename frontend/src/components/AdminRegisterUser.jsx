@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { adminCreateUser } from '../api/admin'
 
+const DEPARTMENTS = ['IT', 'CE', 'CSE', 'ME', 'CIVIL', 'EE', 'EC', 'AIML']
+
 export default function AdminRegisterUser({ forcedRole }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -21,7 +23,8 @@ export default function AdminRegisterUser({ forcedRole }) {
     setSuccess('')
 
     if (!name || !email) return setError('Name and email are required')
-    if (!['hod','faculty'].includes(role)) return setError('Invalid role')
+    if (!['hod', 'faculty'].includes(role)) return setError('Invalid role')
+    if (!department) return setError('Department is required')
 
     try {
       setLoading(true)
@@ -56,9 +59,19 @@ export default function AdminRegisterUser({ forcedRole }) {
         <input type="email" className="w-full border rounded-lg px-3 py-2" value={email} onChange={e=>setEmail(e.target.value)} required />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium mb-1">Department (optional)</label>
-        <input className="w-full border rounded-lg px-3 py-2" value={department} onChange={e=>setDepartment(e.target.value)} />
+      <div className="md:col-span-2">
+        <label className="block text-sm font-medium mb-1">Department</label>
+        <select
+          className="w-full border rounded-lg px-3 py-2"
+          value={department}
+          onChange={e => setDepartment(e.target.value)}
+          required
+        >
+          <option value="" disabled>Select Department</option>
+          {DEPARTMENTS.map(dep => (
+            <option key={dep} value={dep}>{dep}</option>
+          ))}
+        </select>
       </div>
 
       <div className="md:col-span-2">

@@ -8,7 +8,10 @@ import connectMongoDB from './config/mongoDb.js'
 
 // routes
 import authRoutes from './routes/authRoutes.js'
+import applicationRoutes from './routes/applicationRoutes.js'
 import adminRoutes from './routes/adminRoutes.js'
+import filesRoutes from './routes/filesRoutes.js'
+import hodRoutes from './routes/hodRoutes.js'
 
 dotenv.config()
 
@@ -20,7 +23,10 @@ app.use(express.json())
 
 // mount routes
 app.use('/auth', authRoutes)    // /auth/register, /auth/login
-app.use('/admin', adminRoutes)  // /admin/users (admin creates HOD/Faculty)
+app.use('/admin', adminRoutes)  // /admin/users, /admin/applications/stats
+app.use('/applications', applicationRoutes)
+app.use('/files', filesRoutes)  // <— serve GridFS files uploaded via upload.js
+app.use('/hod', hodRoutes)      // /hod/someEndpoint
 
 // health
 app.get('/health', (req, res) => res.json({ ok: true }))
