@@ -31,9 +31,14 @@ export async function createApplication(req, res) {
   if (!name || !email) return res.status(400).json({ error: 'name and email are required' })
   if (!fatherName) return res.status(400).json({ error: 'fatherName is required' })
 
-  // One application per student
   const existing = await StudentApplication.findOne({ student: studentId })
-  if (existing) return res.status(409).json({ error: 'application already exists' })
+  if (existing) {
+    // Block new applications when one already exists
+    if (existing.status === 'rejected') {
+      return res.status(403).json({ error: 'application was rejected. You cannot submit a new application.' })
+    }
+    return res.status(409).json({ error: 'application already exists' })
+  }
 
   // Use student's typed department (normalized). Return 400 if unknown.
   const deptResolved = normalizeDepartment(department)
@@ -69,28 +74,30 @@ export async function createApplication(req, res) {
 
 // GET /applications/me
 export async function getMyApplication(req, res) {
-  const studentId = req.user.sub
-  const app = await StudentApplication.findOne({ student: studentId })
+  const app = await StudentApplication.findOne({ student: req.user.sub })
     .populate('assignedHod', 'name email department')
     .lean()
 
-  if (!app) {
-    return res.json({
-      exists: false,
-      status: 'none',
-      message: 'No application found. Please submit your application.',
-      lastUpdate: null
-    })
-  }
+  if (!app) return res.json({ exists:false, status:'none', message:'No application found.', lastUpdate:null })
 
-  const lastMsg = app.messages?.[app.messages.length - 1]?.text || null
-  return res.json({
+  const msgs = app.messages || []
+  const hodMsgs = msgs.filter(m => m.by === 'hod')
+  const lastHod = hodMsgs[hodMsgs.length - 1] || null
+
+  res.json({
+    id: app._id,
     exists: true,
     status: app.status,
-    department: app.department,
+    message: msgs[msgs.length - 1]?.text || `Current status: ${app.status}`,
+    lastUpdate: app.updatedAt,
+    documents: app.documents || {},
     assignedHod: app.assignedHod || null,
-    message: lastMsg || `Current status: ${app.status}`,
-    lastUpdate: app.updatedAt
+    hodAction: lastHod ? {
+      status: lastHod.status || null,
+      note: lastHod.note || null,
+      text: lastHod.text || null,
+      at: lastHod.at || app.updatedAt
+    } : null
   })
 }
 
@@ -100,25 +107,28 @@ export async function uploadApplicationDocument(req, res) {
   const allowed = ['aadharCard', 'incomeCertificate', 'resume', 'resultsheet']
   if (!allowed.includes(type)) return res.status(400).json({ error: 'invalid document type' })
 
-  // populated by your existing upload middleware (GridFS)
   const fileId = req.file?.id
   const url = req.file?.url || (fileId ? `/files/${fileId}` : null)
   if (!url) return res.status(400).json({ error: 'upload failed' })
 
-  const update = {
-    [`documents.${type}`]: {
-      url,
-      filename: req.file?.filename,
-      mimetype: req.file?.mimetype,
-      size: req.file?.size
-    }
+  // Enforce status rules
+  const app = await StudentApplication.findOne({ _id: id, student: req.user.sub })
+  if (!app) return res.status(404).json({ error: 'application not found' })
+  if (app.status === 'rejected') {
+    return res.status(403).json({ error: 'cannot upload documents to a rejected application' })
+  }
+  if (app.status !== 'submitted') {
+    return res.status(403).json({ error: 'uploads allowed only when application is pending' })
   }
 
-  const app = await StudentApplication.findOneAndUpdate(
-    { _id: id, student: req.user.sub },
-    { $set: update },
-    { new: true }
-  )
-  if (!app) return res.status(404).json({ error: 'application not found' })
+  app.documents = app.documents || {}
+  app.documents[type] = {
+    url,
+    filename: req.file?.filename,
+    mimetype: req.file?.mimetype,
+    size: req.file?.size
+  }
+  await app.save()
+
   return res.json({ success: true, documents: app.documents })
 }

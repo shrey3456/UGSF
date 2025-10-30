@@ -11,7 +11,10 @@ const fileSchema = new Schema({
 const messageSchema = new Schema({
   text: { type: String, required: true },
   by: { type: String, enum: ['system', 'hod', 'faculty'], default: 'system' },
-  at: { type: Date, default: Date.now }
+  at: { type: Date, default: Date.now },
+  // NEW: keep HOD action details
+  status: { type: String, enum: ['submitted', 'accepted', 'rejected'], default: undefined },
+  note: { type: String, default: null }
 }, { _id: false })
 
 const studentApplicationSchema = new Schema({
@@ -46,6 +49,26 @@ const studentApplicationSchema = new Schema({
     resume: { type: fileSchema },
     resultsheet: { type: fileSchema },
   },
+
+  // NEW: project details
+  project: {
+    title: { type: String, default: '' },
+    description: { type: String, default: '' },
+    startDate: { type: Date, default: null },
+    endDate: { type: Date, default: null }
+  },
+
+  // NEW: final result and project assignment details
+  finalResult: { type: String, enum: ['pending','pass','fail'], default: 'pending' },
+  assignedFaculty: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  assignedProject: { type: Schema.Types.ObjectId, ref: 'Project', default: null },
+  assignedProjectTitle: { type: String, default: '' },
+  assignedProjectDescription: { type: String, default: '' },
+  assignedAt: { type: Date, default: null },
+
+  // NEW: assignment window
+  startAt: { type: Date, default: null },
+  endAt: { type: Date, default: null },
 }, { timestamps: true })
 
 // Optional: auto-fill name/email from User if not provided

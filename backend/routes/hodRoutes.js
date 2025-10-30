@@ -1,16 +1,36 @@
 import { Router } from 'express'
-import { authMiddleware } from '../middlewares/authMiddleware.js'
-import { listDepartmentApplications, getApplicationForHod, setApplicationStatus } from '../controllers/hodController.js'
+import { authenticate, requireRole } from '../middlewares/authMiddleware.js'
+import {
+  listDepartmentApplications,
+  getApplicationForHod,
+  setApplicationStatus,
+  listInterviews,
+  scheduleInterview,
+  setInterviewResult,
+  listDepartmentFaculties,
+  assignFacultyProject,
+  listDepartmentProjects,
+  listEligibleStudents
+} from '../controllers/hodController.js'
 
 const router = Router()
 
-const requireHod = (req, res, next) => {
-  if (!req.user || req.user.role !== 'hod') return res.status(403).json({ error: 'forbidden' })
-  next()
-}
+// Applications
+router.get('/applications', authenticate, requireRole('hod'), listDepartmentApplications)
+router.get('/applications/:id', authenticate, requireRole('hod'), getApplicationForHod)
+router.patch('/applications/:id/status', authenticate, requireRole('hod'), setApplicationStatus)
 
-router.get('/applications', authMiddleware, requireHod, listDepartmentApplications)
-router.get('/applications/:id', authMiddleware, requireHod, getApplicationForHod)
-router.patch('/applications/:id/status', authMiddleware, requireHod, setApplicationStatus)
+// Interviews
+router.get('/interviews', authenticate, requireRole('hod'), listInterviews)
+router.post('/interviews', authenticate, requireRole('hod'), scheduleInterview)
+router.patch('/interviews/:id/result', authenticate, requireRole('hod'), setInterviewResult)
+
+// Faculties and assignment
+router.get('/faculties', authenticate, requireRole('hod'), listDepartmentFaculties)
+router.patch('/applications/:id/assign', authenticate, requireRole('hod'), assignFacultyProject)
+
+// Projects and eligible students
+router.get('/projects', authenticate, requireRole('hod'), listDepartmentProjects)
+router.get('/eligible-students', authenticate, requireRole('hod'), listEligibleStudents)
 
 export default router
