@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { authenticate, requireRole } from '../middlewares/authMiddleware.js'
+import { authenticate, restrictTo } from '../middlewares/authMiddleware.js'
 import {
   listDepartmentApplications,
   getApplicationForHod,
@@ -7,20 +7,26 @@ import {
   listInterviews,
   scheduleInterview,
   setInterviewResult,
-  listDepartmentFaculties,
-  assignFacultyProject
+  getAssignmentOptions,
+  createAssignment,
+  listAssignments
 } from '../controllers/hodController.js'
 
 const router = Router()
 
-router.get('/applications', authenticate, requireRole('hod'), listDepartmentApplications)
-router.get('/applications/:id', authenticate, requireRole('hod'), getApplicationForHod)
-router.patch('/applications/:id/status', authenticate, requireRole('hod'), setApplicationStatus)
+// Applications
+router.get('/applications', authenticate, restrictTo('hod'), listDepartmentApplications)
+router.get('/applications/:id', authenticate, restrictTo('hod'), getApplicationForHod)
+router.patch('/applications/:id/status', authenticate, restrictTo('hod'), setApplicationStatus)
 
-router.get('/interviews', authenticate, requireRole('hod'), listInterviews)
-router.post('/interviews', authenticate, requireRole('hod'), scheduleInterview)
-router.patch('/interviews/:id/result', authenticate, requireRole('hod'), setInterviewResult)
-router.get('/faculties', authenticate, requireRole('hod'), listDepartmentFaculties)
-router.patch('/applications/:id/assign', authenticate, requireRole('hod'), assignFacultyProject)
+// Interviews
+router.get('/interviews', authenticate, restrictTo('hod'), listInterviews)
+router.post('/interviews', authenticate, restrictTo('hod'), scheduleInterview)
+router.patch('/interviews/:id/result', authenticate, restrictTo('hod'), setInterviewResult)
+
+// Assignments
+router.get('/assignments/options', authenticate, restrictTo('hod'), getAssignmentOptions)
+router.post('/assignments', authenticate, restrictTo('hod'), createAssignment)
+router.get('/assignments', authenticate, restrictTo('hod'), listAssignments)
 
 export default router

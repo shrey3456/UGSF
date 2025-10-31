@@ -36,6 +36,8 @@ export default function StudentDashboard() {
     rejected: 'bg-rose-100 text-rose-800'
   }
   const statusLabel = app.status === 'submitted' ? 'pending' : app.status
+
+  // Show button but disable when accepted/rejected
   const isAccepted = app.status === 'accepted'
   const isRejected = app.status === 'rejected'
   const canEdit = app.status === 'none' || app.status === 'submitted'
@@ -43,9 +45,6 @@ export default function StudentDashboard() {
 
   const briefMessage = (() => {
     if (loading) return 'Loading...'
-    if (app?.nextInterview) {
-      return `Interview scheduled on ${new Date(app.nextInterview.scheduledAt).toLocaleString()} (${app.nextInterview.mode})`
-    }
     if (app.status === 'none') return 'No application submitted yet.'
     const msg = app.message || 'No updates yet.'
     return msg.length > 120 ? `${msg.slice(0, 120)}…` : msg
@@ -111,7 +110,31 @@ export default function StudentDashboard() {
           {/* ...keep any other cards you need (e.g., Faculty/Tasks after acceptance)... */}
         </section>
 
-        {/* ...accepted-only sections remain unchanged... */}
+        {/* NEW: Your Project (visible only if assigned) */}
+        {!!app.assignedProjectTitle && (
+          <section className="bg-white rounded-xl shadow p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-base font-semibold text-slate-800">Your Project</h3>
+                <div className="mt-2 text-slate-900 font-medium">{app.assignedProjectTitle}</div>
+                {app.assignedProjectDescription && (
+                  <div className="text-sm text-slate-600 mt-1">{app.assignedProjectDescription}</div>
+                )}
+                {app.assignedAt && (
+                  <div className="text-xs text-slate-400 mt-2">
+                    Assigned on {new Date(app.assignedAt).toLocaleString()}
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => navigate('/student/project')}
+                className="whitespace-nowrap bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg"
+              >
+                Project Description
+              </button>
+            </div>
+          </section>
+        )}
       </main>
     </div>
   )

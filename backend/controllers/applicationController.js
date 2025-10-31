@@ -1,6 +1,7 @@
 import StudentApplication from '../models/StudentApplication.js'
 import User from '../models/User.js'
-import Interview from '../models/Interview.js' // add this
+import Interview from '../models/Interview.js'
+import Assignment from '../models/Assignment.js'
 
 // Map to canonical department code (fixed set)
 function normalizeDepartment(input) {
@@ -80,47 +81,57 @@ export async function getMyApplication(req, res) {
     const app = await StudentApplication.findOne({ student: uid }).lean()
     if (!app) return res.json({ exists: false })
 
-    const messages = app.messages || []
-    const lastHod = messages.filter(m => m.by === 'hod').slice(-1)[0] || null
-    const hodAction = lastHod ? { text: lastHod.text, note: lastHod.note, at: lastHod.at } : null
-    const hodMarkedPending = app.status === 'submitted' && !!lastHod
+    // Upcoming interview (keep your existing logic if present)
+    let nextInterview = null
+    try {
+      const next = await Interview.findOne({
+        student: uid,
+        result: 'pending',
+        scheduledAt: { $gte: new Date() }
+      }).sort({ scheduledAt: 1 }).lean()
+      if (next) {
+        nextInterview = {
+          scheduledAt: next.scheduledAt,
+          mode: next.mode,
+          meetingUrl: next.meetingUrl || '',
+          location: next.location || ''
+        }
+      }
+    } catch {}
 
-    // Find upcoming pending interview (soonest)
-    const next = await Interview.findOne({
-      student: uid,
-      result: 'pending',
-      scheduledAt: { $gte: new Date() }
-    }).sort({ scheduledAt: 1 }).lean()
+    // Find active assignment
+    const activeAssign = await Assignment.findOne({ student: uid, status: 'active' })
+      .populate('faculty', 'name email')
+      .lean()
 
-    // Short message for dashboard
-    const lastMessage = messages.length ? (messages[messages.length - 1].text || '') : ''
-    const message = next
-      ? `Interview scheduled on ${new Date(next.scheduledAt).toLocaleString()} (${next.mode})`
-      : lastMessage
+    // Prefer Assignment data; fallback to fields stored on application (if you already save them there)
+    const assignedProjectTitle =
+      activeAssign?.projectTitle || app.assignedProjectTitle || ''
+    const assignedProjectDescription =
+      activeAssign?.projectDesc || app.assignedProjectDescription || ''
+    const assignedAt =
+      activeAssign?.createdAt || app.assignedAt || null
+    const assignedFaculty = activeAssign?.faculty
+      ? { _id: activeAssign.faculty._id, name: activeAssign.faculty.name, email: activeAssign.faculty.email }
+      : null
 
     res.json({
       exists: true,
       id: app._id,
       name: app.name,
       email: app.email,
-      fatherName: app.fatherName,
-      cgpa: app.cgpa,
-      fatherIncome: app.fatherIncome,
       department: app.department,
       status: app.status,
       lastUpdate: app.updatedAt,
+      message: app.message || '',
       documents: app.documents || {},
-      hodAction,
-      hodMarkedPending,
-      // NEW: upcoming interview details for UI
-      nextInterview: next ? {
-        scheduledAt: next.scheduledAt,
-        mode: next.mode,
-        meetingUrl: next.meetingUrl || '',
-        location: next.location || ''
-      } : null,
-      // NEW: brief message for dashboard
-      message
+      nextInterview,
+
+      // NEW: project assignment fields
+      assignedProjectTitle,
+      assignedProjectDescription,
+      assignedAt,
+      assignedFaculty
     })
   } catch (e) {
     console.error('getMyApplication', e)

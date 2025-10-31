@@ -4,6 +4,7 @@ import ProtectedRoute from '../components/ProtectedRoute'
 import StudentDashboard from '../pages/Student/Dashboard'
 import ApplicationForm from '../pages/Student/ApplicationForm'
 import ApplicationStatus from '../pages/Student/ApplicationStatus'
+import StudentProject from '../pages/Student/Project'
 
 import Login from '../components/login'
 import Register from '../components/Register'
@@ -17,7 +18,7 @@ import AdminDashboard from '../pages/Admin/Dashboard'
 import HODDashboard from '../pages/HOD/Dashboard'
 import HODApplicationView from '../pages/HOD/ApplicationView'
 import FacultyDashboard from '../pages/Faculty/Dashboard'
-// import HODAssignments from '../pages/HOD/Assignments.jsx'
+import HODAssignments from '../pages/HOD/Assignments' // uncomment this
 
 export default function AppRoutes() {
   return (
@@ -96,7 +97,22 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      {/* <Route path="/hod/assignments" element={<HODAssignments />} /> */}
+      <Route
+        path="/student/project"
+        element={
+          <ProtectedRoute roles={['student']}>
+            <StudentProject />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/hod/assignments"
+        element={
+          <ProtectedRoute roles={['hod']}>
+            <HODAssignments />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Role-based redirect utility */}
       <Route path="/me" element={<RoleRedirect />} />

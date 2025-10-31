@@ -59,3 +59,16 @@ export function listEligibleStudents() {
   return fetch(`${API}/hod/eligible-students`, { headers: headers() })
     .then(r => r.json().then(d => (r.ok ? d : Promise.reject(d?.error || 'Failed'))))
 }
+
+export function getAssignmentOptions() {
+  return apiFetch(`/hod/assignments/options`, { method: 'GET' })
+}
+
+export function createAssignment(payload) {
+  return apiFetch(`/hod/assignments`, { method: 'POST', body: payload })
+}
+
+export function listAssignments(params = {}) {
+  const qs = new URLSearchParams(params).toString()
+  return apiFetch(`/hod/assignments${qs ? `?${qs}` : ''}`, { method: 'GET' })
+}

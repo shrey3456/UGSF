@@ -176,6 +176,13 @@ export default function HODDashboard() {
       </header>
 
       <main className="p-6 space-y-4">
+        {/* Quick actions */}
+        <div className="flex gap-3">
+          <button className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded" onClick={() => navigate('/hod/assignments')}>
+            Assignments
+          </button>
+        </div>
+
         {toast && <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-2 rounded">{toast}</div>}
 
         <div className="bg-white rounded-xl shadow p-4 flex items-center justify-between">
