@@ -1,5 +1,6 @@
 import StudentApplication from '../models/StudentApplication.js'
 import User from '../models/User.js'
+import Interview from '../models/Interview.js' // add this
 
 // Map to canonical department code (fixed set)
 function normalizeDepartment(input) {
@@ -74,31 +75,57 @@ export async function createApplication(req, res) {
 
 // GET /applications/me
 export async function getMyApplication(req, res) {
-  const app = await StudentApplication.findOne({ student: req.user.sub })
-    .populate('assignedHod', 'name email department')
-    .lean()
+  try {
+    const uid = req.user.sub
+    const app = await StudentApplication.findOne({ student: uid }).lean()
+    if (!app) return res.json({ exists: false })
 
-  if (!app) return res.json({ exists:false, status:'none', message:'No application found.', lastUpdate:null })
+    const messages = app.messages || []
+    const lastHod = messages.filter(m => m.by === 'hod').slice(-1)[0] || null
+    const hodAction = lastHod ? { text: lastHod.text, note: lastHod.note, at: lastHod.at } : null
+    const hodMarkedPending = app.status === 'submitted' && !!lastHod
 
-  const msgs = app.messages || []
-  const hodMsgs = msgs.filter(m => m.by === 'hod')
-  const lastHod = hodMsgs[hodMsgs.length - 1] || null
+    // Find upcoming pending interview (soonest)
+    const next = await Interview.findOne({
+      student: uid,
+      result: 'pending',
+      scheduledAt: { $gte: new Date() }
+    }).sort({ scheduledAt: 1 }).lean()
 
-  res.json({
-    id: app._id,
-    exists: true,
-    status: app.status,
-    message: msgs[msgs.length - 1]?.text || `Current status: ${app.status}`,
-    lastUpdate: app.updatedAt,
-    documents: app.documents || {},
-    assignedHod: app.assignedHod || null,
-    hodAction: lastHod ? {
-      status: lastHod.status || null,
-      note: lastHod.note || null,
-      text: lastHod.text || null,
-      at: lastHod.at || app.updatedAt
-    } : null
-  })
+    // Short message for dashboard
+    const lastMessage = messages.length ? (messages[messages.length - 1].text || '') : ''
+    const message = next
+      ? `Interview scheduled on ${new Date(next.scheduledAt).toLocaleString()} (${next.mode})`
+      : lastMessage
+
+    res.json({
+      exists: true,
+      id: app._id,
+      name: app.name,
+      email: app.email,
+      fatherName: app.fatherName,
+      cgpa: app.cgpa,
+      fatherIncome: app.fatherIncome,
+      department: app.department,
+      status: app.status,
+      lastUpdate: app.updatedAt,
+      documents: app.documents || {},
+      hodAction,
+      hodMarkedPending,
+      // NEW: upcoming interview details for UI
+      nextInterview: next ? {
+        scheduledAt: next.scheduledAt,
+        mode: next.mode,
+        meetingUrl: next.meetingUrl || '',
+        location: next.location || ''
+      } : null,
+      // NEW: brief message for dashboard
+      message
+    })
+  } catch (e) {
+    console.error('getMyApplication', e)
+    res.status(500).json({ error: 'server error' })
+  }
 }
 
 // PATCH /applications/:id/documents/:type
@@ -131,4 +158,35 @@ export async function uploadApplicationDocument(req, res) {
   await app.save()
 
   return res.json({ success: true, documents: app.documents })
+}
+
+// Allow student to update their application while HOD-marked pending
+export async function updateMyApplication(req, res) {
+  try {
+    const uid = req.user.sub
+    const app = await StudentApplication.findOne({ student: uid })
+    if (!app) return res.status(404).json({ error: 'application not found' })
+
+    // Only allow updates when status is submitted and HOD has touched it
+    const messages = app.messages || []
+    const lastHod = messages.filter(m => m.by === 'hod').slice(-1)[0] || null
+    const hodMarkedPending = app.status === 'submitted' && !!lastHod
+    if (!hodMarkedPending) {
+      return res.status(400).json({ error: 'updates allowed only when HOD marked pending' })
+    }
+
+    const { name, email, fatherName, cgpa, fatherIncome, department } = req.body || {}
+    if (name !== undefined) app.name = String(name).trim()
+    if (email !== undefined) app.email = String(email).trim()
+    if (fatherName !== undefined) app.fatherName = String(fatherName).trim()
+    if (cgpa !== undefined && cgpa !== null && cgpa !== '') app.cgpa = Number(cgpa)
+    if (fatherIncome !== undefined && fatherIncome !== null && fatherIncome !== '') app.fatherIncome = Number(fatherIncome)
+    if (department !== undefined) app.department = String(department).trim()
+
+    await app.save()
+    res.json({ ok: true })
+  } catch (e) {
+    console.error('updateMyApplication', e)
+    res.status(500).json({ error: 'server error' })
+  }
 }

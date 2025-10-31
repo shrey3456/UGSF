@@ -28,30 +28,15 @@ export default function HODApplicationView() {
   const [irResult, setIrResult] = useState('pass')
   const [assignOpen, setAssignOpen] = useState(false)
   const [faculties, setFaculties] = useState([])
+  const [assignForm, setAssignForm] = useState({
+    facultyId: '',
+    projectTitle: '',
+    projectDescription: '',
+    startDate: '',
+    endDate: ''
+  })
   const [assignErr, setAssignErr] = useState('')
   const [assignSaving, setAssignSaving] = useState(false)
-  const [assignForm, setAssignForm] = useState({ facultyId: '', projectTitle: '', projectDescription: '', startDate: '', endDate: '' })
-
-  useEffect(() => {
-    let mounted = true
-    setLoading(true)
-    getHodApplication(id)
-      .then(d => { if (mounted) setApp(d) })
-      .catch(e => { if (mounted) setError(e.message) })
-      .finally(() => { if (mounted) setLoading(false) })
-    return () => { mounted = false }
-  }, [id])
-
-  useEffect(() => {
-    if (!app?.student) return
-    let mounted = true
-    setIrLoading(true)
-    listHodInterviews({ student: app.student })
-      .then((rows) => { if (mounted) setInterviews(rows || []) })
-      .catch((e) => { if (mounted) setIrError(e.message) })
-      .finally(() => { if (mounted) setIrLoading(false) })
-    return () => { mounted = false }
-  }, [app?.student])
 
   // helper: last HOD message
   const lastHod = (app?.messages || []).filter(m => m.by === 'hod').slice(-1)[0]
@@ -81,6 +66,30 @@ export default function HODApplicationView() {
   const docs = app?.documents || {}
   const docLink = (d) => makeAbsolute(d?.url || null) // served via /files/:id, opens inline in browser
 
+  // ADD: fetch application
+  useEffect(() => {
+    let mounted = true
+    setLoading(true)
+    setError('')
+    getHodApplication(id)
+      .then(data => { if (mounted) setApp(data) })
+      .catch(err => { if (mounted) setError(err.message || 'Failed to load') })
+      .finally(() => { if (mounted) setLoading(false) })
+    return () => { mounted = false }
+  }, [id])
+
+  // fetch interviews
+  useEffect(() => {
+    if (!app?.student) return
+    let mounted = true
+    setIrLoading(true)
+    listHodInterviews({ student: app.student })
+      .then((rows) => { if (mounted) setInterviews(rows || []) })
+      .catch((e) => { if (mounted) setIrError(e.message) })
+      .finally(() => { if (mounted) setIrLoading(false) })
+    return () => { mounted = false }
+  }, [app?.student])
+
   const latestInterview = interviews?.[interviews.length - 1] || null
   const canAssign = (app?.status === 'accepted' || app?.finalResult === 'pass') && !app?.assignedFaculty
 
@@ -101,14 +110,19 @@ export default function HODApplicationView() {
     setAssignErr('')
     if (!assignForm.facultyId) return setAssignErr('Select a faculty')
     if (!assignForm.projectTitle.trim()) return setAssignErr('Enter project title')
+
+    // Map to backend fields
+    const startAt = assignForm.startDate ? new Date(assignForm.startDate).toISOString() : undefined
+    const endAt = assignForm.endDate ? new Date(assignForm.endDate).toISOString() : undefined
+
     try {
       setAssignSaving(true)
       await assignFacultyProject(id, {
         facultyId: assignForm.facultyId,
         projectTitle: assignForm.projectTitle.trim(),
         projectDescription: assignForm.projectDescription?.trim() || undefined,
-        startDate: assignForm.startDate || undefined,
-        endDate: assignForm.endDate || undefined
+        startAt,
+        endAt
       })
       const updated = await getHodApplication(id)
       setApp(updated)
@@ -200,68 +214,6 @@ export default function HODApplicationView() {
                 </button>
               </div>
             </div>
-
-            {/* NEW: Interview section */}
-            {latestInterview && (
-              <div className="rounded-lg border p-4">
-                <h2 className="text-lg font-medium mb-2">Interview</h2>
-                <div className="text-sm text-slate-700">
-                  Scheduled: {new Date(latestInterview.scheduledAt).toLocaleString()} • Mode: {latestInterview.mode}
-                  {latestInterview.meetingUrl && (
-                    <> • <a href={latestInterview.meetingUrl} target="_blank" rel="noreferrer" className="underline text-emerald-700">Join Link</a></>
-                  )}
-                  {latestInterview.location && <> • Venue: {latestInterview.location}</>}
-                </div>
-                <div className="mt-2 text-sm">
-                  Current Result: <span className="font-medium uppercase">{latestInterview.result}</span>
-                </div>
-
-                {latestInterview.result === 'pending' && (
-                  <div className="mt-3 space-y-2">
-                    <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-2">
-                        <input type="radio" name="ir" value="pass" checked={irResult==='pass'} onChange={e=>setIrResult(e.target.value)} />
-                        <span>Pass</span>
-                      </label>
-                      <label className="flex items-center gap-2">
-                        <input type="radio" name="ir" value="fail" checked={irResult==='fail'} onChange={e=>setIrResult(e.target.value)} />
-                        <span>Fail</span>
-                      </label>
-                    </div>
-                    <textarea
-                      rows={2}
-                      className="w-full border rounded-lg px-3 py-2"
-                      placeholder="Remark (optional)"
-                      value={irNote}
-                      onChange={e=>setIrNote(e.target.value)}
-                    />
-                    {irError && <div className="text-sm text-red-600">{irError}</div>}
-                    <button
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg"
-                      onClick={async () => {
-                        try {
-                          setIrError('')
-                          await setInterviewResult(latestInterview._id, irResult, irNote || undefined)
-                          // reload interview list and application to reflect status/messages
-                          const [rows, updated] = await Promise.all([
-                            listHodInterviews({ student: app.student }),
-                            getHodApplication(id)
-                          ])
-                          setInterviews(rows || [])
-                          setApp(updated)
-                          setNote('')
-                          setSaved(irResult === 'pass' ? 'Interview Passed' : 'Interview Failed')
-                        } catch (e) {
-                          setIrError(e.message)
-                        }
-                      }}
-                    >
-                      Save Result
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
           </>
         )}
 
@@ -286,6 +238,68 @@ export default function HODApplicationView() {
             <button className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg" onClick={openAssign}>
               Assign Faculty & Project
             </button>
+          </div>
+        )}
+
+        {/* NEW: Interview section */}
+        {latestInterview && (
+          <div className="rounded-lg border p-4">
+            <h2 className="text-lg font-medium mb-2">Interview</h2>
+            <div className="text-sm text-slate-700">
+              Scheduled: {new Date(latestInterview.scheduledAt).toLocaleString()} • Mode: {latestInterview.mode}
+              {latestInterview.meetingUrl && (
+                <> • <a href={latestInterview.meetingUrl} target="_blank" rel="noreferrer" className="underline text-emerald-700">Join Link</a></>
+              )}
+              {latestInterview.location && <> • Venue: {latestInterview.location}</>}
+            </div>
+            <div className="mt-2 text-sm">
+              Current Result: <span className="font-medium uppercase">{latestInterview.result}</span>
+            </div>
+
+            {latestInterview.result === 'pending' && (
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2">
+                    <input type="radio" name="ir" value="pass" checked={irResult==='pass'} onChange={e=>setIrResult(e.target.value)} />
+                    <span>Pass</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input type="radio" name="ir" value="fail" checked={irResult==='fail'} onChange={e=>setIrResult(e.target.value)} />
+                    <span>Fail</span>
+                  </label>
+                </div>
+                <textarea
+                  rows={2}
+                  className="w-full border rounded-lg px-3 py-2"
+                  placeholder="Remark (optional)"
+                  value={irNote}
+                  onChange={e=>setIrNote(e.target.value)}
+                />
+                {irError && <div className="text-sm text-red-600">{irError}</div>}
+                <button
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg"
+                  onClick={async () => {
+                    try {
+                      setIrError('')
+                      await setInterviewResult(latestInterview._id, irResult, irNote || undefined)
+                      // reload interview list and application to reflect status/messages
+                      const [rows, updated] = await Promise.all([
+                        listHodInterviews({ student: app.student }),
+                        getHodApplication(id)
+                      ])
+                      setInterviews(rows || [])
+                      setApp(updated)
+                      setNote('')
+                      setSaved(irResult === 'pass' ? 'Interview Passed' : 'Interview Failed')
+                    } catch (e) {
+                      setIrError(e.message)
+                    }
+                  }}
+                >
+                  Save Result
+                </button>
+              </div>
+            )}
           </div>
         )}
 

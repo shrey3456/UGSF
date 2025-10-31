@@ -8,6 +8,10 @@ export function getMyApplication() {
   return apiFetch('/applications/me', { method: 'GET' })
 }
 
+export function updateMyApplication(payload) {
+  return apiFetch('/applications/me', { method: 'PATCH', body: payload })
+}
+
 export function uploadApplicationDocument(appId, type, file) {
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
   const token = JSON.parse(localStorage.getItem('auth') || '{}')?.token || ''

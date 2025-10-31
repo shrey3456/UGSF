@@ -17,7 +17,7 @@ import AdminDashboard from '../pages/Admin/Dashboard'
 import HODDashboard from '../pages/HOD/Dashboard'
 import HODApplicationView from '../pages/HOD/ApplicationView'
 import FacultyDashboard from '../pages/Faculty/Dashboard'
-import HODAssignments from '../pages/HOD/Assignments.jsx'
+// import HODAssignments from '../pages/HOD/Assignments.jsx'
 
 export default function AppRoutes() {
   return (
@@ -96,7 +96,7 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route path="/hod/assignments" element={<HODAssignments />} />
+      {/* <Route path="/hod/assignments" element={<HODAssignments />} /> */}
 
       {/* Role-based redirect utility */}
       <Route path="/me" element={<RoleRedirect />} />

@@ -16,7 +16,13 @@ import hodRoutes from './routes/hodRoutes.js'
 dotenv.config()
 
 const app = express()
-app.use(cors())
+
+// REPLACE the simple cors() with configured CORS:
+app.use(cors({
+  origin: "http://localhost:5173", // Your frontend URL
+  credentials: true
+}));
+
 app.use(helmet())
 app.use(morgan('dev'))
 app.use(express.json())

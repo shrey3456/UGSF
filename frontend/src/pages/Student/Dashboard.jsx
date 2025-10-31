@@ -36,9 +36,16 @@ export default function StudentDashboard() {
     rejected: 'bg-rose-100 text-rose-800'
   }
   const statusLabel = app.status === 'submitted' ? 'pending' : app.status
+  const isAccepted = app.status === 'accepted'
+  const isRejected = app.status === 'rejected'
+  const canEdit = app.status === 'none' || app.status === 'submitted'
+  const buttonLabel = app.exists && canEdit ? 'Update Application' : 'Add Application'
 
   const briefMessage = (() => {
     if (loading) return 'Loading...'
+    if (app?.nextInterview) {
+      return `Interview scheduled on ${new Date(app.nextInterview.scheduledAt).toLocaleString()} (${app.nextInterview.mode})`
+    }
     if (app.status === 'none') return 'No application submitted yet.'
     const msg = app.message || 'No updates yet.'
     return msg.length > 120 ? `${msg.slice(0, 120)}…` : msg
@@ -84,16 +91,21 @@ export default function StudentDashboard() {
           <div className="bg-white rounded-xl shadow p-6">
             <h3 className="text-base font-semibold mb-2">Add Application</h3>
             <p className="text-sm text-slate-600 mb-4">
-              {app.status === 'rejected'
-                ? 'Your application was rejected. You cannot submit a new application.'
+              {isAccepted
+                ? 'Your application is approved. You cannot update it.'
+                : isRejected
+                ? 'Your application was rejected. You cannot submit again.'
                 : 'Submit or update your application.'}
             </p>
             <button
               onClick={() => navigate('/student/apply')}
-              disabled={app.status === 'rejected'}
-              className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-300 disabled:text-slate-600 text-white px-4 py-2 rounded-lg"
+              disabled={!canEdit}
+              aria-disabled={!canEdit}
+              title={!canEdit ? 'Not allowed after approval/rejection' : ''}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg
+                         disabled:bg-slate-300 disabled:text-slate-600 disabled:cursor-not-allowed"
             >
-              {app.exists && app.status !== 'rejected' ? 'Update Application' : 'Add Application'}
+              {buttonLabel}
             </button>
           </div>
           {/* ...keep any other cards you need (e.g., Faculty/Tasks after acceptance)... */}

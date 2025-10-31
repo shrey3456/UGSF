@@ -7,7 +7,8 @@ const projectSchema = new Schema({
   description: { type: String, default: '' },
   whatToDo: { type: String, default: '' },
   techStack: { type: String, default: '' },
-  // Either a link (Drive/URL) or an uploaded file in GridFS
+
+  // Either external link (Google Drive/URL) or uploaded file via GridFS
   docLink: { type: String, default: '' },
   docFileId: { type: Schema.Types.ObjectId, default: null },
   docFileName: { type: String, default: '' },

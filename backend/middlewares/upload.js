@@ -2,6 +2,7 @@ import multer from 'multer';
 import path from 'path';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
+import fs from 'fs';
 
 // Create temporary memory storage
 const storage = multer.memoryStorage();
@@ -69,6 +70,27 @@ export const storeInGridFS = async (req, res, next) => {
     next(error);
   }
 };
+
+// Local docs folder
+const docsRoot = path.join(process.cwd(), 'uploads', 'docs')
+fs.mkdirSync(docsRoot, { recursive: true })
+
+// Disk storage for project docs (pdf/doc)
+const storageDocs = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, docsRoot),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname)
+    const base = path.basename(file.originalname, ext).replace(/\s+/g, '_')
+    cb(null, `${base}_${Date.now()}${ext}`)
+  }
+})
+export const uploadDoc = multer({
+  storage: storageDocs,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+})
+
+// Memory storage for Excel
+export const uploadExcel = multer({ storage: multer.memoryStorage() });
 
 // Export a modified upload middleware
 export default {

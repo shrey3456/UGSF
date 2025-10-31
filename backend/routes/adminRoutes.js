@@ -8,11 +8,12 @@ import {
   createProjectByAdmin,
   listProjectsAdmin,
   assignProjectToHod,
-  bulkUploadProjectsExcel
+  bulkUploadProjectsExcel, downloadProjectsTemplate
 } from '../controllers/adminController.js'
 
 const router = Router()
 
+router.post('/users', authMiddleware, requireRole('admin'), createUserByAdmin)
 // HODs
 router.get('/hods', authMiddleware, requireRole('admin'), listHods)
 
@@ -36,6 +37,13 @@ router.post(
   requireRole('admin'),
   excelUpload.single('excel'),
   bulkUploadProjectsExcel
+)
+
+router.get(
+  '/projects/template',
+  authMiddleware,
+  requireRole('admin'),
+  downloadProjectsTemplate
 )
 
 export default router

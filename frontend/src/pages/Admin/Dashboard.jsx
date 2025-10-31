@@ -24,6 +24,7 @@ export default function AdminDashboard() {
   const [excelFile, setExcelFile] = useState(null)
   const [excelHodId, setExcelHodId] = useState('')
   const [toast, setToast] = useState('')
+  const [excelUploading, setExcelUploading] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -67,16 +68,17 @@ export default function AdminDashboard() {
     e.preventDefault()
     if (!excelFile) return setToast('Select an Excel file (.xlsx)')
     try {
-      await bulkProjectsExcel(excelFile, excelHodId || undefined)
-      setToast('Excel imported')
-      setExcelFile(null)
-      setExcelHodId('')
-      const ps = await listAdminProjects()
-      setProjects(ps)
+      setExcelUploading(true)
+      const res = await bulkProjectsExcel(excelFile, excelHodId || undefined)
+      setToast(`Excel imported (${res.created})`)
+      setExcelFile(null); setExcelHodId('')
+      const ps = await listAdminProjects(); setProjects(ps)
     } catch (e) {
+      alert(e.message)
       setToast(e.message)
     } finally {
-      setTimeout(() => setToast(''), 1500)
+      setExcelUploading(false)
+      setTimeout(() => setToast(''), 2000)
     }
   }
 
@@ -93,7 +95,7 @@ export default function AdminDashboard() {
       <main className="p-6 space-y-6">
         {toast && <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-2 rounded">{toast}</div>}
 
-        {/* Application Stats (dummy) */}
+        {/* Applications Overview (unchanged) */}
         <section className="bg-white rounded-xl shadow p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-medium">Applications Overview</h2>
@@ -138,7 +140,7 @@ export default function AdminDashboard() {
           )}
         </section>
 
-        {/* Register HOD/Faculty with two buttons and one form */}
+        {/* Register HOD/Faculty (unchanged) */}
         <section className="bg-white rounded-xl shadow p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-medium">Register HOD / Faculty</h2>
@@ -275,7 +277,9 @@ export default function AdminDashboard() {
                   {hods.map(h=> <option value={h._id} key={h._id}>{h.name} - {h.department}</option>)}
                 </select>
               </div>
-              <button className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg">Upload</button>
+              <button disabled={excelUploading} className="bg-slate-800 hover:bg-slate-700 disabled:bg-slate-400 text-white px-4 py-2 rounded-lg">
+                {excelUploading ? 'Uploading...' : 'Upload'}
+              </button>
             </form>
           </div>
 

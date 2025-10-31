@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { createMyApplication, uploadApplicationDocument, getMyApplication } from '../../api/applications'
+import { createMyApplication, uploadApplicationDocument, getMyApplication, updateMyApplication } from '../../api/applications'
 import { useNavigate } from 'react-router-dom'
 
 const DEPARTMENTS = ['IT', 'CE', 'CSE', 'ME', 'CIVIL', 'EE', 'EC', 'AIML']
@@ -71,21 +71,24 @@ export default function ApplicationForm() {
       if (existing.status === 'submitted') {
         try {
           setLoading(true)
-          const appId = existing.id // now returned by backend
-          if (!appId) {
-            setLoading(false)
-            return navigate('/student/status')
+          // If HOD-marked pending, update fields first
+          if (canEditInPending) {
+            await updateMyApplication({
+              name: form.name,
+              email: form.email,
+              fatherName: form.fatherName,
+              cgpa: form.cgpa ? Number(form.cgpa) : undefined,
+              fatherIncome: form.fatherIncome ? Number(form.fatherIncome) : undefined,
+              department: form.department
+            })
           }
+          const appId = existing.id
           const uploads = []
           for (const [key, file] of Object.entries(files)) {
             if (file) uploads.push(uploadApplicationDocument(appId, key, file))
           }
-          if (!uploads.length) {
-            setError('Select at least one document to upload.')
-            return
-          }
-          await Promise.all(uploads)
-          setSuccess('Documents uploaded.')
+          if (uploads.length) await Promise.all(uploads)
+          setSuccess(canEditInPending ? 'Application updated.' : 'Documents uploaded.')
           setTimeout(() => navigate('/student/status'), 800)
         } catch (e2) {
           setError(e2.message)
@@ -129,6 +132,7 @@ export default function ApplicationForm() {
 
   const pendingMode = existing?.exists && existing.status === 'submitted'
   const rejectedMode = existing?.exists && existing.status === 'rejected'
+  const canEditInPending = pendingMode && !!existing?.hodMarkedPending
   const docs = existing?.documents || {}
   const DOCS_LIST = [
     ['Aadhar Card', 'aadharCard'],
@@ -208,32 +212,32 @@ export default function ApplicationForm() {
           <div>
             <label className="block text-sm font-medium mb-1">Your Name</label>
             <input name="name" className="w-full border rounded-lg px-3 py-2"
-              value={form.name} onChange={onChange} required disabled={pendingMode || rejectedMode} />
+              value={form.name} onChange={onChange} required disabled={(!canEditInPending && pendingMode) || rejectedMode} />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Email</label>
             <input type="email" name="email" className="w-full border rounded-lg px-3 py-2"
-              value={form.email} onChange={onChange} required disabled={pendingMode || rejectedMode} />
+              value={form.email} onChange={onChange} required disabled={(!canEditInPending && pendingMode) || rejectedMode} />
           </div>
           <div className="md:col-span-2">
             <label className="block text-sm font-medium mb-1">Father Name</label>
             <input name="fatherName" className="w-full border rounded-lg px-3 py-2"
-              value={form.fatherName} onChange={onChange} required disabled={pendingMode || rejectedMode} />
+              value={form.fatherName} onChange={onChange} required disabled={(!canEditInPending && pendingMode) || rejectedMode} />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">CGPA</label>
             <input name="cgpa" type="number" step="0.01" min="0" max="10" className="w-full border rounded-lg px-3 py-2"
-              value={form.cgpa} onChange={onChange} disabled={pendingMode || rejectedMode} />
+              value={form.cgpa} onChange={onChange} disabled={(!canEditInPending && pendingMode) || rejectedMode} />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Father Income</label>
             <input name="fatherIncome" type="number" min="0" className="w-full border rounded-lg px-3 py-2"
-              value={form.fatherIncome} onChange={onChange} disabled={pendingMode || rejectedMode} />
+              value={form.fatherIncome} onChange={onChange} disabled={(!canEditInPending && pendingMode) || rejectedMode} />
           </div>
           <div className="md:col-span-2">
             <label className="block text-sm font-medium mb-1">Department</label>
             <select name="department" className="w-full border rounded-lg px-3 py-2"
-              value={form.department} onChange={onChange} required disabled={pendingMode || rejectedMode}>
+              value={form.department} onChange={onChange} required disabled={(!canEditInPending && pendingMode) || rejectedMode}>
               <option value="" disabled>Select your department</option>
               {DEPARTMENTS.map(dep => (
                 <option key={dep} value={dep}>{dep}</option>
