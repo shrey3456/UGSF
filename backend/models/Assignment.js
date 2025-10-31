@@ -3,8 +3,8 @@ const { Schema, model } = mongoose
 
 const submissionSchema = new Schema({
   note: { type: String, default: '' },
-  link: { type: String, default: '' },           // e.g., Drive link
-  fileUrl: { type: String, default: '' },        // stored file URL if uploaded
+  link: { type: String, default: '' },
+  fileUrl: { type: String, default: '' },
   filename: { type: String, default: '' },
   mimetype: { type: String, default: '' },
   size: { type: Number, default: 0 },
@@ -18,7 +18,7 @@ const taskSchema = new Schema({
   status: { type: String, enum: ['pending', 'completed'], default: 'pending' },
   createdAt: { type: Date, default: Date.now },
   completedAt: { type: Date, default: null },
-  submissions: { type: [submissionSchema], default: [] } // NEW
+  submissions: { type: [submissionSchema], default: [] }
 }, { _id: true })
 
 const assignmentSchema = new Schema({

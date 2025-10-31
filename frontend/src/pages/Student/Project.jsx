@@ -118,66 +118,78 @@ export default function StudentProject() {
                 <div className="mt-2 text-slate-600">No tasks yet.</div>
               ) : (
                 <div className="mt-3 space-y-4">
-                  {tasks.map(t => (
-                    <div key={t._id} className="border rounded-lg p-3">
-                      <div className="flex items-center justify-between">
-                        <div className="font-medium">{t.title}</div>
-                        <span className={`px-2 py-1 rounded text-xs ${
-                          t.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-yellow-100 text-yellow-800'
-                        }`}>{t.status}</span>
-                      </div>
-                      {t.details && <div className="text-sm text-slate-700 mt-1 whitespace-pre-wrap">{t.details}</div>}
-                      <div className="text-xs text-slate-500 mt-1">
-                        Due: {t.dueDate ? new Date(t.dueDate).toLocaleString() : '—'}
-                      </div>
-
-                      {/* Previous submissions */}
-                      {(t.submissions?.length || 0) > 0 && (
-                        <div className="mt-2">
-                          <div className="text-sm font-medium">Your submissions</div>
-                          <ul className="mt-1 space-y-1">
-                            {t.submissions.map((s) => (
-                              <li key={s._id} className="text-sm text-slate-700">
-                                <span className="text-xs text-slate-500 mr-2">{new Date(s.submittedAt).toLocaleString()}:</span>
-                                {s.link && <a href={s.link} target="_blank" rel="noopener noreferrer" className="text-indigo-700 underline mr-2">Link</a>}
-                                {s.fileUrl && <a href={s.fileUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-700 underline mr-2">{s.filename || 'File'}</a>}
-                                {s.note && <span className="ml-1">{s.note}</span>}
-                              </li>
-                            ))}
-                          </ul>
+                  {tasks.map(t => {
+                    const isCompleted = String(t.status).toLowerCase() === 'completed'
+                    return (
+                      <div key={t._id} className="border rounded-lg p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="font-medium">{t.title}</div>
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            t.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-yellow-100 text-yellow-800'
+                          }`}>{t.status}</span>
                         </div>
-                      )}
+                        {t.details && <div className="text-sm text-slate-700 mt-1 whitespace-pre-wrap">{t.details}</div>}
+                        <div className="text-xs text-slate-500 mt-1">
+                          Due: {t.dueDate ? new Date(t.dueDate).toLocaleString() : '—'}
+                        </div>
 
-                      {/* Submit work */}
-                      <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
-                        <input
-                          className="border rounded px-2 py-2"
-                          placeholder="Drive/Git/Doc link"
-                          value={formMap[t._id]?.link || ''}
-                          onChange={e => setFormMap(m => ({ ...m, [t._id]: { ...(m[t._id]||{}), link: e.target.value } }))}
-                        />
-                        <input
-                          className="border rounded px-2 py-2"
-                          placeholder="Note"
-                          value={formMap[t._id]?.note || ''}
-                          onChange={e => setFormMap(m => ({ ...m, [t._id]: { ...(m[t._id]||{}), note: e.target.value } }))}
-                        />
-                        <input
-                          type="file"
-                          className="border rounded px-2 py-2"
-                          onChange={e => setFormMap(m => ({ ...m, [t._id]: { ...(m[t._id]||{}), file: e.target.files?.[0] || null } }))}
-                        />
+                        {/* Previous submissions (always visible) */}
+                        {(t.submissions?.length || 0) > 0 && (
+                          <div className="mt-2">
+                            <div className="text-sm font-medium">Your submissions</div>
+                            <ul className="mt-1 space-y-1">
+                              {t.submissions.map((s) => (
+                                <li key={s._id} className="text-sm text-slate-700">
+                                  <span className="text-xs text-slate-500 mr-2">{new Date(s.submittedAt).toLocaleString()}:</span>
+                                  {s.link && <a href={s.link} target="_blank" rel="noopener noreferrer" className="text-indigo-700 underline mr-2">Link</a>}
+                                  {s.fileUrl && <a href={s.fileUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-700 underline mr-2">{s.filename || 'File'}</a>}
+                                  {s.note && <span className="ml-1">{s.note}</span>}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Submit work */}
+                        {isCompleted ? (
+                          <div className="mt-3 text-sm text-slate-500">
+                            This task is completed. Contact your faculty if you need to submit more work.
+                          </div>
+                        ) : (
+                          <>
+                            <div className="mt-3 grid grid-cols-1 md-grid-cols-3 gap-2">
+                              <input
+                                className="border rounded px-2 py-2"
+                                placeholder="Drive/Git/Doc link"
+                                value={formMap[t._id]?.link || ''}
+                                onChange={e => setFormMap(m => ({ ...m, [t._id]: { ...(m[t._id]||{}), link: e.target.value } }))}
+                              />
+                              <input
+                                className="border rounded px-2 py-2"
+                                placeholder="Note"
+                                value={formMap[t._id]?.note || ''}
+                                onChange={e => setFormMap(m => ({ ...m, [t._id]: { ...(m[t._id]||{}), note: e.target.value } }))}
+                              />
+                              <input
+                                type="file"
+                                accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,image/*,text/plain"
+                                className="border rounded px-2 py-2"
+                                onChange={e => setFormMap(m => ({ ...m, [t._id]: { ...(m[t._id]||{}), file: e.target.files?.[0] || null } }))}
+                              />
+                            </div>
+                            <div className="mt-2">
+                              <button
+                                onClick={() => submitWork(t._id)}
+                                className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-1.5 rounded"
+                              >
+                                Submit Work
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
-                      <div className="mt-2">
-                        <button
-                          onClick={() => submitWork(t._id)}
-                          className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-1.5 rounded"
-                        >
-                          Submit Work
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
