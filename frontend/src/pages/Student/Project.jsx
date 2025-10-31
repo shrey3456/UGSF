@@ -49,6 +49,16 @@ export default function StudentProject() {
             ) : (
               <p className="text-slate-500">No description provided.</p>
             )}
+            {d.assignedProjectLink && (
+              <a
+                href={d.assignedProjectLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-indigo-700 hover:text-indigo-900 underline"
+              >
+                Open project document
+              </a>
+            )}
           </div>
         )}
       </main>

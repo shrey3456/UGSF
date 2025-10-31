@@ -50,6 +50,8 @@ export default function StudentDashboard() {
     return msg.length > 120 ? `${msg.slice(0, 120)}…` : msg
   })()
 
+  const hasProject = !!app.assignedProjectTitle
+
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="bg-indigo-600 text-white px-6 py-4 flex items-center justify-between">
@@ -73,15 +75,35 @@ export default function StudentDashboard() {
                 <span className={`px-2 py-1 rounded text-xs ${statusStyles[app.status]}`}>
                   {app.status === 'none' ? 'no application' : statusLabel}
                 </span>
+                {hasProject && (
+                  <span className="px-2 py-1 rounded text-xs bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    project assigned
+                  </span>
+                )}
               </div>
               <p className="text-slate-600 mt-2">{briefMessage}</p>
+              {hasProject && (
+                <p className="text-sm text-slate-700 mt-1">
+                  You have one project assigned.
+                </p>
+              )}
             </div>
-            <button
-              onClick={() => navigate('/student/status')}
-              className="whitespace-nowrap bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg"
-            >
-              Track Application
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate('/student/status')}
+                className="whitespace-nowrap bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg"
+              >
+                Track Application
+              </button>
+              {hasProject && (
+                <button
+                  onClick={() => navigate('/student/project')}
+                  className="whitespace-nowrap bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg"
+                >
+                  Project
+                </button>
+              )}
+            </div>
           </div>
         </section>
 
@@ -110,7 +132,7 @@ export default function StudentDashboard() {
           {/* ...keep any other cards you need (e.g., Faculty/Tasks after acceptance)... */}
         </section>
 
-        {/* NEW: Your Project (visible only if assigned) */}
+        {/* Your Project section (kept) */}
         {!!app.assignedProjectTitle && (
           <section className="bg-white rounded-xl shadow p-6">
             <div className="flex items-start justify-between gap-4">
@@ -123,6 +145,18 @@ export default function StudentDashboard() {
                 {app.assignedAt && (
                   <div className="text-xs text-slate-400 mt-2">
                     Assigned on {new Date(app.assignedAt).toLocaleString()}
+                  </div>
+                )}
+                {app.assignedProjectLink && (
+                  <div className="mt-2">
+                    <a
+                      href={app.assignedProjectLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-indigo-700 hover:text-indigo-900 underline text-sm"
+                    >
+                      Open project document
+                    </a>
                   </div>
                 )}
               </div>

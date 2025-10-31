@@ -102,6 +102,7 @@ export async function getMyApplication(req, res) {
     // Find active assignment
     const activeAssign = await Assignment.findOne({ student: uid, status: 'active' })
       .populate('faculty', 'name email')
+      .populate('project', 'docLink')
       .lean()
 
     // Prefer Assignment data; fallback to fields stored on application (if you already save them there)
@@ -114,6 +115,8 @@ export async function getMyApplication(req, res) {
     const assignedFaculty = activeAssign?.faculty
       ? { _id: activeAssign.faculty._id, name: activeAssign.faculty.name, email: activeAssign.faculty.email }
       : null
+    const assignedProjectLink =
+      activeAssign?.projectLink || activeAssign?.project?.docLink || app.assignedProjectLink || ''
 
     res.json({
       exists: true,
@@ -130,6 +133,7 @@ export async function getMyApplication(req, res) {
       // NEW: project assignment fields
       assignedProjectTitle,
       assignedProjectDescription,
+      assignedProjectLink,
       assignedAt,
       assignedFaculty
     })
@@ -198,6 +202,65 @@ export async function updateMyApplication(req, res) {
     res.json({ ok: true })
   } catch (e) {
     console.error('updateMyApplication', e)
+    res.status(500).json({ error: 'server error' })
+  }
+}
+
+export async function listMyAssignments(req, res) {
+  try {
+    const me = await User.findById(req.user.sub).lean()
+    if (!me || me.role?.toLowerCase() !== 'faculty') return res.status(403).json({ error: 'forbidden' })
+
+    const { status = 'active' } = req.query
+    const q = { faculty: me._id }
+    if (status === 'active') q.status = 'active'
+    if (status === 'completed') q.status = 'completed'
+
+    const rows = await Assignment.find(q)
+      .populate('student', 'name email')
+      .populate('project', 'docLink title')
+      .sort({ createdAt: -1 })
+      .lean()
+
+    res.json(rows.map(r => ({
+      _id: r._id,
+      student: r.student ? { _id: r.student._id, name: r.student.name, email: r.student.email } : null,
+      projectTitle: r.projectTitle,
+      projectDesc: r.projectDesc || '',
+      projectLink: r.projectLink || r.project?.docLink || '',
+      startDate: r.startDate || null,
+      endDate: r.endDate || null,
+      status: r.status
+    })))
+  } catch (e) {
+    console.error('listMyAssignments', e)
+    res.status(500).json({ error: 'server error' })
+  }
+}
+
+export async function getMyAssignmentById(req, res) {
+  try {
+    const me = await User.findById(req.user.sub).lean()
+    if (!me || me.role?.toLowerCase() !== 'faculty') return res.status(403).json({ error: 'forbidden' })
+
+    const a = await Assignment.findOne({ _id: req.params.id, faculty: me._id })
+      .populate('student', 'name email')
+      .populate('project', 'docLink title description')
+      .lean()
+    if (!a) return res.status(404).json({ error: 'not found' })
+
+    res.json({
+      _id: a._id,
+      student: a.student ? { _id: a.student._id, name: a.student.name, email: a.student.email } : null,
+      projectTitle: a.projectTitle,
+      projectDesc: a.projectDesc || a.project?.description || '',
+      projectLink: a.projectLink || a.project?.docLink || '',
+      startDate: a.startDate || null,
+      endDate: a.endDate || null,
+      status: a.status
+    })
+  } catch (e) {
+    console.error('getMyAssignmentById', e)
     res.status(500).json({ error: 'server error' })
   }
 }

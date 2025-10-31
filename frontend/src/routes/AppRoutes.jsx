@@ -17,7 +17,7 @@ import { getDashboardPath } from './paths'
 import AdminDashboard from '../pages/Admin/Dashboard'
 import HODDashboard from '../pages/HOD/Dashboard'
 import HODApplicationView from '../pages/HOD/ApplicationView'
-import FacultyDashboard from '../pages/Faculty/Dashboard'
+import FacultyDashboard, { FacultyAssignments, FacultyAssignmentDetails } from '../pages/Faculty/Dashboard'
 import HODAssignments from '../pages/HOD/Assignments' // uncomment this
 
 export default function AppRoutes() {
@@ -66,10 +66,34 @@ export default function AppRoutes() {
         }
       />
       <Route
+        path="/faculty"
+        element={
+          <ProtectedRoute roles={['faculty']}>
+            <FacultyDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/faculty/dashboard"
         element={
           <ProtectedRoute roles={['faculty']}>
             <FacultyDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/faculty/assignments"
+        element={
+          <ProtectedRoute roles={['faculty']}>
+            <FacultyAssignments />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/faculty/assignments/:id"
+        element={
+          <ProtectedRoute roles={['faculty']}>
+            <FacultyAssignmentDetails />
           </ProtectedRoute>
         }
       />

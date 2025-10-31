@@ -38,7 +38,7 @@ export async function getAssignmentOptions(req, res) {
 
   // Projects in dept not used by an active assignment (by title)
   const projects = (await Project.find({ department: me.department, active: { $ne: false } })
-    .select('_id title description').sort({ createdAt: -1 }).lean())
+    .select('_id title description docLink').sort({ createdAt: -1 }).lean())
     .filter(p => !usedProjectTitles.has((p.title || '').trim()))
 
   res.json({ students, faculties, projects })
@@ -76,11 +76,13 @@ export async function createAssignment(req, res) {
   let proj = null
   let finalTitle = (projectTitle || '').trim()
   let finalDesc = (projectDesc || '').trim()
+  let finalLink = ''
   if (projectId) {
     proj = await Project.findOne({ _id: projectId, department: me.department }).lean()
     if (!proj) return res.status(400).json({ error: 'invalid project for this department' })
     finalTitle = proj.title
     finalDesc = proj.description || ''
+    finalLink = proj.docLink || ''
   }
   if (!finalTitle) return res.status(400).json({ error: 'project title is required' })
 
@@ -101,8 +103,10 @@ export async function createAssignment(req, res) {
   // Create Assignment
   const created = await Assignment.create({
     student: app.student,
+    project: proj ? proj._id : null,
     projectTitle: finalTitle,
     projectDesc: finalDesc,
+    projectLink: finalLink,
     faculty: faculty._id,
     hod: me._id,
     startDate: s || new Date(),
@@ -111,22 +115,18 @@ export async function createAssignment(req, res) {
   })
 
   // Update application assignment summary (for UI consistency)
-  app.assignedFaculty = faculty._id
-  app.assignedProjectTitle = finalTitle
-  app.assignedProjectDescription = finalDesc
-  app.assignedAt = new Date()
-  await app.save()
-
   await StudentApplication.updateOne(
-    { student: app.student },
+    { _id: app._id },
     {
       $set: {
+        assignedFaculty: faculty._id,
         assignedProjectTitle: finalTitle,
         assignedProjectDescription: finalDesc,
-        assignedFaculty: faculty._id,
+        assignedProjectLink: finalLink,
         assignedAt: new Date()
       }
-    }
+    },
+    { strict: false }
   )
 
   res.status(201).json({ id: created._id })
