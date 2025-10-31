@@ -1,6 +1,7 @@
 import StudentApplication from '../models/StudentApplication.js'
-import User from '../models/User.js'
+// import User from '../models/User.js'
 import Interview from '../models/Interview.js'
+import User from '../models/User.js'
 import Assignment from '../models/Assignment.js'
 
 // Map to canonical department code (fixed set)
@@ -117,6 +118,7 @@ export async function getMyApplication(req, res) {
       : null
     const assignedProjectLink =
       activeAssign?.projectLink || activeAssign?.project?.docLink || app.assignedProjectLink || ''
+    const assignedAssignmentId = activeAssign?._id || null
 
     res.json({
       exists: true,
@@ -135,7 +137,8 @@ export async function getMyApplication(req, res) {
       assignedProjectDescription,
       assignedProjectLink,
       assignedAt,
-      assignedFaculty
+      assignedFaculty,
+      assignedAssignmentId // NEW
     })
   } catch (e) {
     console.error('getMyApplication', e)
@@ -261,6 +264,133 @@ export async function getMyAssignmentById(req, res) {
     })
   } catch (e) {
     console.error('getMyAssignmentById', e)
+    res.status(500).json({ error: 'server error' })
+  }
+}
+
+// List tasks (with submissions) for an assignment owned by the logged-in faculty
+export async function listMyAssignmentTasks(req, res) {
+  try {
+    const me = await User.findById(req.user.sub).lean()
+    if (!me || String(me.role).toLowerCase() !== 'faculty') return res.status(403).json({ error: 'forbidden' })
+
+    const a = await Assignment.findOne({ _id: req.params.id, faculty: me._id }).lean()
+    if (!a) return res.status(404).json({ error: 'not found' })
+
+    const tasks = (a.tasks || []).slice().sort((x, y) => {
+      const dx = x.dueDate ? new Date(x.dueDate).getTime() : 0
+      const dy = y.dueDate ? new Date(y.dueDate).getTime() : 0
+      return dx - dy
+    })
+    // tasks already contain submissions sub-array
+    res.json(tasks)
+  } catch (e) {
+    console.error('listMyAssignmentTasks', e)
+    res.status(500).json({ error: 'server error' })
+  }
+}
+
+export async function createMyAssignmentTask(req, res) {
+  try {
+    const me = await User.findById(req.user.sub).lean()
+    if (!me || String(me.role).toLowerCase() !== 'faculty') return res.status(403).json({ error: 'forbidden' })
+
+    const { title, details, dueDate } = req.body || {}
+    if (!String(title || '').trim()) return res.status(400).json({ error: 'title is required' })
+
+    const a = await Assignment.findOne({ _id: req.params.id, faculty: me._id })
+    if (!a) return res.status(404).json({ error: 'not found' })
+
+    a.tasks.push({
+      title: String(title).trim(),
+      details: String(details || ''),
+      dueDate: dueDate ? new Date(dueDate) : undefined,
+      status: 'pending'
+    })
+    await a.save()
+    res.status(201).json(a.tasks[a.tasks.length - 1])
+  } catch (e) {
+    console.error('createMyAssignmentTask', e)
+    res.status(500).json({ error: 'server error' })
+  }
+}
+
+export async function updateMyAssignmentTask(req, res) {
+  try {
+    const me = await User.findById(req.user.sub).lean()
+    if (!me || String(me.role).toLowerCase() !== 'faculty') return res.status(403).json({ error: 'forbidden' })
+
+    const { id, taskId } = req.params
+    const { status, title, details, dueDate } = req.body || {}
+
+    const a = await Assignment.findOne({ _id: id, faculty: me._id })
+    if (!a) return res.status(404).json({ error: 'not found' })
+
+    const t = a.tasks.id(taskId)
+    if (!t) return res.status(404).json({ error: 'task not found' })
+
+    if (typeof title === 'string') t.title = title.trim()
+    if (typeof details === 'string') t.details = details
+    if (dueDate !== undefined) t.dueDate = dueDate ? new Date(dueDate) : undefined
+    if (status === 'completed' && t.status !== 'completed') {
+      t.status = 'completed'
+      t.completedAt = new Date()
+    } else if (status === 'pending' && t.status !== 'pending') {
+      t.status = 'pending'
+      t.completedAt = null
+    }
+
+    await a.save()
+    res.json(t)
+  } catch (e) {
+    console.error('updateMyAssignmentTask', e)
+    res.status(500).json({ error: 'server error' })
+  }
+}
+
+export async function studentListTasks(req, res) {
+  try {
+    const uid = req.user.sub
+    const a = await Assignment.findOne({ _id: req.params.id, student: uid }).lean()
+    if (!a) return res.status(404).json({ error: 'not found' })
+    const tasks = (a.tasks || []).slice().sort((x, y) => {
+      const dx = x.dueDate ? new Date(x.dueDate).getTime() : 0
+      const dy = y.dueDate ? new Date(y.dueDate).getTime() : 0
+      return dx - dy
+    })
+    res.json(tasks)
+  } catch (e) {
+    console.error('studentListTasks', e)
+    res.status(500).json({ error: 'server error' })
+  }
+}
+
+export async function submitTaskWork(req, res) {
+  try {
+    const uid = req.user.sub
+    const { id, taskId } = req.params
+    const { note, link } = req.body || {}
+    const a = await Assignment.findOne({ _id: id, student: uid })
+    if (!a) return res.status(404).json({ error: 'not found' })
+    const t = a.tasks.id(taskId)
+    if (!t) return res.status(404).json({ error: 'task not found' })
+
+    const fileId = req.file?.id
+    const fileUrl = req.file?.url || (fileId ? `/files/${fileId}` : '')
+    const sub = {
+      note: String(note || ''),
+      link: String(link || ''),
+      fileUrl,
+      filename: req.file?.filename || '',
+      mimetype: req.file?.mimetype || '',
+      size: req.file?.size || 0,
+      submittedAt: new Date()
+    }
+    t.submissions.push(sub)
+    await a.save()
+    res.status(201).json(t.submissions[t.submissions.length - 1])
+  } catch (e) {
+    console.error('submitTaskWork', e)
     res.status(500).json({ error: 'server error' })
   }
 }
